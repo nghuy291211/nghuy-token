@@ -15,7 +15,7 @@ const SOCIAL_LINKS = {
     facebook: process.env.URL_FACEBOOK || "https://facebook.com",
     x: process.env.URL_X || "https://x.com",
     vk: process.env.URL_VK || "https://vk.com",
-    avatar: process.env.URL_AVATAR || "/cat.png"
+    avatar: process.env.URL_AVATAR || "/file_0000000072ac722f8af5dffff5cd0c65.png"
 };
 
 app.use(cors());
