@@ -163,7 +163,7 @@
         .x-twitter { color: #000000; }
         .vk { color: #0077ff; }
 
-        /* Ô nhập link & Nút Copy */
+        /* Khung Ô Nhập & Ô Kết Quả */
         .input-wrapper {
             width: 100%;
             position: relative;
@@ -188,7 +188,8 @@
             box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.15);
         }
 
-        .btn-copy {
+        /* Nút Dán / Nút Sao chép */
+        .btn-action {
             position: absolute;
             right: 12px;
             top: 50%;
@@ -196,19 +197,19 @@
             background: #f1f5f9;
             color: #64748b;
             border: none;
-            width: 34px;
-            height: 34px;
+            padding: 6px 10px;
             border-radius: 8px;
             cursor: pointer;
             display: flex;
             align-items: center;
-            justify-content: center;
-            font-size: 15px;
+            gap: 5px;
+            font-size: 13px;
+            font-weight: 600;
             transition: all 0.2s;
         }
 
-        .btn-copy:hover {
-            background: #e2e8f0;
+        .btn-action:hover {
+            background: #f3e8ff;
             color: #7e22ce;
         }
 
@@ -227,12 +228,44 @@
             cursor: pointer;
             box-shadow: 0 6px 20px rgba(168, 85, 247, 0.35);
             transition: all 0.2s;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         .btn-generate:hover {
             opacity: 0.95;
             transform: translateY(-1px);
+        }
+
+        /* Ô Kết Quả (Mặc định ẩn) */
+        .result-container {
+            display: none;
+            width: 100%;
+            margin-bottom: 25px;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-label {
+            font-size: 12px;
+            font-weight: 800;
+            color: #16a34a;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .result-box {
+            border-color: #22c55e !important;
+            background: #f0fdf4 !important;
+            color: #15803d !important;
+            font-weight: 600;
         }
 
         .footer {
@@ -241,6 +274,7 @@
             color: #94a3b8;
             letter-spacing: 1.5px;
             text-transform: uppercase;
+            margin-top: 10px;
         }
     </style>
 </head>
@@ -286,16 +320,29 @@
             <a href="#" id="link-vk" target="_blank" class="btn-social vk" title="VKontakte"><i class="fa-brands fa-vk"></i></a>
         </div>
 
-        <!-- Ô Nhập Link & Nút Copy -->
+        <!-- 1. Ô Nhập Link (Có Nút Dán) -->
         <div class="input-wrapper">
             <input type="text" id="tokenInput" class="input-box" placeholder="Dán URL kiosgamer chứa eat=...">
-            <button class="btn-copy" onclick="copyToken()" title="Sao chép">
-                <i class="fa-regular fa-copy"></i>
+            <button class="btn-action" onclick="pasteLink()" title="Dán từ khay nhớ tạm">
+                <i class="fa-regular fa-clipboard"></i> Dán
             </button>
         </div>
 
         <!-- Nút Khởi Tạo -->
         <button class="btn-generate" onclick="generateToken()">GENERATE &rarr;</button>
+
+        <!-- 2. Ô Kết Quả Token (Chỉ hiện sau khi bấm tạo thành công) -->
+        <div class="result-container" id="resultContainer">
+            <div class="result-label">
+                <i class="fa-solid fa-circle-check"></i> Kết quả Token:
+            </div>
+            <div class="input-wrapper">
+                <input type="text" id="resultInput" class="input-box result-box" readonly>
+                <button class="btn-action" onclick="copyToken()" title="Sao chép Token">
+                    <i class="fa-regular fa-copy"></i> Copy
+                </button>
+            </div>
+        </div>
 
         <!-- Footer -->
         <div class="footer">BY @NGHUYDIY</div>
@@ -304,6 +351,7 @@
     <script>
         let isCooldown = false;
 
+        // Tải đường dẫn MXH từ server
         async function loadSocialLinks() {
             try {
                 const res = await fetch('/api/social-links');
@@ -320,19 +368,33 @@
         }
         loadSocialLinks();
 
+        // Hàm Dán link từ khay nhớ tạm (Clipboard)
+        async function pasteLink() {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text) {
+                    document.getElementById('tokenInput').value = text;
+                } else {
+                    alert('Khay nhớ tạm đang trống!');
+                }
+            } catch (err) {
+                alert('Vui lòng cấp quyền truy cập khay nhớ tạm hoặc dán thủ công!');
+            }
+        }
+
+        // Hàm Xử lý Tạo Token
         async function generateToken() {
             if (isCooldown) return;
 
             const inputField = document.getElementById('tokenInput');
-            const btnGenerate = document.querySelector('.btn-generate');
+            const resultContainer = document.getElementById('resultContainer');
+            const resultField = document.getElementById('resultInput');
             const urlValue = inputField.value.trim();
 
             if (!urlValue) {
                 alert('Vui lòng nhập đường link kiosgamer!');
                 return;
             }
-
-            inputField.value = "Đang xử lý...";
 
             try {
                 const response = await fetch('/api/convert', {
@@ -344,20 +406,24 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    inputField.value = data.accessToken;
+                    // 1. Hiển thị kết quả vào ô kết quả bên dưới
+                    resultField.value = data.accessToken;
+                    resultContainer.style.display = 'block';
+
+                    // 2. Clear (xoá trống) ô nhập link
+                    inputField.value = '';
+
+                    // 3. Kích hoạt đếm ngược 10s
+                    startCooldown(10);
                 } else {
                     alert('Lỗi: ' + data.message);
-                    inputField.value = urlValue;
                 }
             } catch (err) {
                 alert('Có lỗi xảy ra khi kết nối máy chủ!');
-                inputField.value = urlValue;
             }
-
-            // Kích hoạt đếm ngược 10s
-            startCooldown(10);
         }
 
+        // Đếm ngược 10s
         function startCooldown(seconds) {
             isCooldown = true;
             const btnGenerate = document.querySelector('.btn-generate');
@@ -382,16 +448,17 @@
             }, 1000);
         }
 
+        // Hàm Sao chép Token kết quả
         function copyToken() {
-            const inputField = document.getElementById('tokenInput');
-            if (!inputField.value || inputField.value === "Đang xử lý...") {
-                alert('Không có token để copy!');
+            const resultField = document.getElementById('resultInput');
+            if (!resultField.value) {
+                alert('Không có token để sao chép!');
                 return;
             }
             
-            inputField.select();
-            navigator.clipboard.writeText(inputField.value);
-            alert('Đã sao chép token!');
+            resultField.select();
+            navigator.clipboard.writeText(resultField.value);
+            alert('Đã sao chép Token!');
         }
     </script>
 </body>
